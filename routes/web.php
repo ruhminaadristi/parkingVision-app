@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\ManagementDataPetugasController;
+use App\Http\Controllers\Admin\ManagementDataParkirController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ParkingAreaController;
@@ -26,11 +28,21 @@ Route::prefix('admin')->name('admin.')->group(function () {
     // Protected Admin Routes (untuk admin yang sudah login)
     Route::middleware('auth')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-        Route::resource('areas', ParkingAreaController::class);
-        Route::resource('slots', ParkingSlotController::class);
-        Route::get('/history', [OccupancyHistoryController::class, 'index'])->name('history');
-        Route::get('/reports', [ReportController::class, 'index'])->name('reports');
-        Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
+
+            Route::get('/datapetugas', [ManagementDataPetugasController::class, 'index'])->name('petugas.index');
+            Route::prefix('petugas')->name('petugas.')->group(function () {
+                Route::post('/store', [ManagementDataPetugasController::class, 'store'])->name('store');
+                Route::put('/update/{user}', [ManagementDataPetugasController::class, 'update'])->name('update');
+                Route::delete('/destroy/{user}', [ManagementDataPetugasController::class, 'destroy'])->name('destroy');
+            });
+
+            Route::get('/dataparkir', [ManagementDataParkirController::class, 'index'])->name('parkir.index');
+            Route::prefix('petugas')->name('petugas.')->group(function () {
+                Route::post('/store', [ManagementDataPetugasController::class, 'store'])->name('store');
+                Route::put('/update/{user}', [ManagementDataPetugasController::class, 'update'])->name('update');
+                Route::delete('/destroy/{user}', [ManagementDataPetugasController::class, 'destroy'])->name('destroy');
+            });
+
         Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
     });
 });
