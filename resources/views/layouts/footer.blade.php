@@ -1,4 +1,4 @@
-<footer class="bg-white border-t mt-auto lg:fixed bottom-0 right-0 left-0 py-2 lg:left-72 z-50">
+<footer class="bg-white border-t mt-auto lg:fixed bottom-0 right-0 left-0 py-2 lg:left-72 z-10">
     <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="py-4">
             <!-- Bagian Bawah Footer -->

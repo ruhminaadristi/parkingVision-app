@@ -11,7 +11,7 @@
                         Parking Vision
                     </h1>
                     <p class="mt-2 text-green-100 max-w-2xl">
-                        Pantau ketersediaan tempat parkir secara real-time. Hemat waktu dan hindari kemacetan dengan mengetahui area parkir yang kosong.
+                        Pantau ketersediaan tempat parkir secara real-time. Hemat waktu dan cepat mengetahui area parkir yang kosong.
                     </p>
                 </div>
                 <div class="flex space-x-4">
@@ -136,21 +136,35 @@ function updateParkingDisplay(data) {
         });
     }
 
-    // Hitung persentase ketersediaan
-    const totalSpots = 6; // Jumlah total spot parkir
-    const occupiedSpots = Array.from({length: 6}, (_, i) =>
+    // Konfigurasi jumlah slot parkir
+    const totalCarSpots = 7; // Slot 0-6 untuk mobil 
+    const totalMotorSpots = 8; // Slot 7-14 untuk motor
+
+    // Hitung slot yang terisi untuk mobil
+    const occupiedCarSpots = Array.from({length: totalCarSpots}, (_, i) => 
         data[`parking_spot_${i}`] === 'occupied' ? 1 : 0
     ).reduce((a, b) => a + b, 0);
+    
+    // Hitung slot yang terisi untuk motor
+    const occupiedMotorSpots = Array.from({length: totalMotorSpots}, (_, i) => 
+        data[`parking_spot_${i + totalCarSpots}`] === 'occupied' ? 1 : 0
+    ).reduce((a, b) => a + b, 0);
 
-    const availableSpots = totalSpots - occupiedSpots;
-    const availabilityPercentage = Math.round((availableSpots / totalSpots) * 100);
+    // Hitung ketersediaan
+    const availableCarSpots = totalCarSpots - occupiedCarSpots;
+    const availableMotorSpots = totalMotorSpots - occupiedMotorSpots;
+    const totalSpots = totalCarSpots + totalMotorSpots;
+    const totalAvailableSpots = availableCarSpots + availableMotorSpots;
+    
+    // Hitung persentase ketersediaan
+    const availabilityPercentage = Math.round((totalAvailableSpots / totalSpots) * 100);
 
     document.getElementById('parkingContent').innerHTML = `
         <!-- Availability Overview -->
         <div class="text-center mb-8">
             <div class="inline-flex items-center justify-center p-1 bg-white rounded-full mb-4">
                 <div class="bg-green-500 text-white rounded-full w-24 h-24 flex flex-col items-center justify-center">
-                    <span class="text-2xl font-bold">${availableSpots}</span>
+                    <span class="text-2xl font-bold">${totalAvailableSpots}</span>
                     <span class="text-xs">Tersedia</span>
                 </div>
                 <div class="px-4">
@@ -161,7 +175,7 @@ function updateParkingDisplay(data) {
                 </div>
             </div>
             <h2 class="text-xl md:text-2xl font-bold text-gray-900">
-                ${availableSpots > 0 ? `Ada ${availableSpots} tempat parkir tersedia saat ini` : 'Semua tempat parkir penuh'}
+                ${totalAvailableSpots > 0 ? `Ada ${totalAvailableSpots} tempat parkir tersedia saat ini` : 'Semua tempat parkir penuh'}
             </h2>
             <p class="text-gray-600 mt-2">Terakhir diperbarui: ${formattedTime}</p>
         </div>
@@ -178,10 +192,10 @@ function updateParkingDisplay(data) {
                         </div>
                         <div>
                             <h3 class="text-lg font-semibold text-gray-900">Total Kendaraan</h3>
-                            <p class="text-3xl font-bold text-blue-600">${data.total_objects || 0}</p>
+                            <p class="text-3xl font-bold text-blue-600">${data.total_vehicles || 0}</p>
                         </div>
                     </div>
-                    <div class="mt-4 grid grid-cols-3 gap-2 text-center">
+                    <div class="mt-4 grid grid-cols-2 gap-2 text-center">
                         <div class="bg-gray-50 p-2 rounded">
                             <p class="text-xs text-gray-500">Mobil</p>
                             <p class="text-lg font-semibold">${data.Car || 0}</p>
@@ -189,10 +203,6 @@ function updateParkingDisplay(data) {
                         <div class="bg-gray-50 p-2 rounded">
                             <p class="text-xs text-gray-500">Motor</p>
                             <p class="text-lg font-semibold">${data.Motorcycle || 0}</p>
-                        </div>
-                        <div class="bg-gray-50 p-2 rounded">
-                            <p class="text-xs text-gray-500">Sepeda</p>
-                            <p class="text-lg font-semibold">${data.Bicycle || 0}</p>
                         </div>
                     </div>
                 </div>
@@ -211,7 +221,7 @@ function updateParkingDisplay(data) {
                             <p class="text-3xl font-bold text-green-600">${data.total_in_parking || 0}</p>
                         </div>
                     </div>
-                    <div class="mt-4 grid grid-cols-3 gap-2 text-center">
+                    <div class="mt-4 grid grid-cols-2 gap-2 text-center">
                         <div class="bg-gray-50 p-2 rounded">
                             <p class="text-xs text-gray-500">Mobil</p>
                             <p class="text-lg font-semibold">${data.Car_in_parking || 0}</p>
@@ -219,10 +229,6 @@ function updateParkingDisplay(data) {
                         <div class="bg-gray-50 p-2 rounded">
                             <p class="text-xs text-gray-500">Motor</p>
                             <p class="text-lg font-semibold">${data.Motorcycle_in_parking || 0}</p>
-                        </div>
-                        <div class="bg-gray-50 p-2 rounded">
-                            <p class="text-xs text-gray-500">Sepeda</p>
-                            <p class="text-lg font-semibold">${data.Bicycle_in_parking || 0}</p>
                         </div>
                     </div>
                 </div>
@@ -243,8 +249,8 @@ function updateParkingDisplay(data) {
                     <div class="bg-gray-50 p-3 rounded">
                         <div class="flex items-center justify-between">
                             <p class="text-sm text-gray-600">Area parkir:</p>
-                            <span class="px-2 py-1 rounded-full text-xs font-medium ${availableSpots > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
-                                ${availableSpots > 0 ? 'Tersedia' : 'Penuh'}
+                            <span class="px-2 py-1 rounded-full text-xs font-medium ${totalAvailableSpots > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                ${totalAvailableSpots > 0 ? 'Tersedia' : 'Penuh'}
                             </span>
                         </div>
                         <div class="mt-2 flex items-center justify-between">
@@ -268,42 +274,70 @@ function updateParkingDisplay(data) {
                     Denah Area Parkir
                 </h2>
                 <div class="bg-gray-100 p-4 rounded-lg">
-                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-4">
-                        ${Array.from({length: 7}, (_, i) => {
-                            const status = data[`parking_spot_${i}`] || 'empty';
-                            const isOccupied = status === 'occupied';
-                            const bgColor = isOccupied ? 'bg-red-500 shadow-red-200' : 'bg-green-500 shadow-green-200';
-                            const statusText = isOccupied ? 'Terisi' : 'Kosong';
 
-                            // Tentukan jenis kendaraan berdasarkan data yang terdeteksi
-                            let vehicleType = '';
-                            if (isOccupied) {
-                                const detectedType = data[`vehicle_type_${i}`];
-                                if (detectedType === 'Car') {
-                                    vehicleType = 'Mobil';
-                                } else if (detectedType === 'Motorcycle') {
-                                    vehicleType = 'Motor';
-                                } else if (detectedType === 'Bicycle') {
-                                    vehicleType = 'Sepeda';
-                                } else {
-                                    vehicleType = 'Kendaraan Terdeteksi';
-                                }
-                            }
+                    <!-- Denah Parkir Motor -->
+                    <div>
+                        <h3 class="text-lg font-semibold mb-4 text-gray-900 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            Area Parkir Motor
+                        </h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-4">
+                            ${Array.from({length: totalMotorSpots}, (_, i) => {
+                                const spotIndex = i + totalCarSpots;
+                                const status = data[`parking_spot_${spotIndex}`] || 'empty';
+                                const isOccupied = status === 'occupied';
+                                const bgColor = isOccupied ? 'bg-red-500 shadow-red-200' : 'bg-green-500 shadow-green-200';
+                                const statusText = isOccupied ? 'Terisi' : 'Kosong';
 
-                            return `
-                                <div class="relative overflow-hidden rounded-lg shadow-lg ${bgColor}">
-                                    <div class="absolute top-2 right-2">
-                                        <span class="px-2 py-1 rounded-full text-xs font-medium ${isOccupied ? 'bg-red-700' : 'bg-green-700'} text-white">
-                                            ${statusText}
-                                        </span>
+                                return `
+                                    <div class="relative overflow-hidden rounded-lg shadow-lg ${bgColor}">
+                                        <div class="absolute top-2 right-2">
+                                            <span class="px-2 py-1 rounded-full text-xs font-medium ${isOccupied ? 'bg-red-700' : 'bg-green-700'} text-white">
+                                                ${statusText}
+                                            </span>
+                                        </div>
+                                        <div class="p-4 flex flex-col items-center justify-center aspect-square">
+                                            <span class="text-white text-2xl font-bold mb-1">R${i + 1}</span>
+                                            ${isOccupied ? `<span class="text-white text-xs">Motor</span>` : ''}
+                                        </div>
                                     </div>
-                                    <div class="p-4 flex flex-col items-center justify-center aspect-square">
-                                        <span class="text-white text-2xl font-bold mb-1">P${i + 1}</span>
-                                        ${isOccupied ? `<span class="text-white text-xs">${vehicleType}</span>` : ''}
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Denah Parkir Mobil -->
+                    <div class="mt-8">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-900 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                            Area Parkir Mobil
+                        </h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-4">
+                            ${Array.from({length: totalCarSpots}, (_, i) => {
+                                const status = data[`parking_spot_${i}`] || 'empty';
+                                const isOccupied = status === 'occupied';
+                                const bgColor = isOccupied ? 'bg-red-500 shadow-red-200' : 'bg-green-500 shadow-green-200';
+                                const statusText = isOccupied ? 'Terisi' : 'Kosong';
+
+                                return `
+                                    <div class="relative overflow-hidden rounded-lg shadow-lg ${bgColor}">
+                                        <div class="absolute top-2 right-2">
+                                            <span class="px-2 py-1 rounded-full text-xs font-medium ${isOccupied ? 'bg-red-700' : 'bg-green-700'} text-white">
+                                                ${statusText}
+                                            </span>
+                                        </div>
+                                        <div class="p-4 flex flex-col items-center justify-center aspect-square">
+                                            <span class="text-white text-2xl font-bold mb-1">M${i + 1}</span>
+                                            ${isOccupied ? `<span class="text-white text-xs">Mobil</span>` : ''}
+                                        </div>
                                     </div>
-                                </div>
-                            `;
-                        }).join('')}
+                                `;
+                            }).join('')}
+                        </div>
                     </div>
 
                     <div class="mt-4 flex flex-wrap justify-center gap-4">

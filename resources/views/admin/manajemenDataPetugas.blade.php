@@ -1,9 +1,5 @@
 @extends('layouts.app')
 
-@section('breadcrumb')
-<a href="{{ route('admin.petugas.index') }}" class="text-gray-700"></a>
-@endsection
-
 @section('content')
 <div class="py-6">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -153,6 +149,19 @@
                                             </svg>
                                             Edit
                                         </button>
+                                        
+                                        <!-- Tombol hapus di samping tombol edit -->
+                                        <form action="{{ route('admin.petugas.destroy', $user->id) }}" method="POST" class="inline-block" id="deletePetugasForm{{ $user->id }}">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="button" onclick="openModal('confirmDeleteModal{{ $user->id }}')" 
+                                                class="flex items-center text-red-600 hover:text-red-900">
+                                                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                                Hapus
+                                            </button>
+                                        </form>
                                     </div>
                                 </td>
                             </tr>
@@ -482,20 +491,6 @@
                             </svg>
                             Batal
                         </button>
-
-                        <!-- Tombol hapus di footer modal edit -->
-                        <div class="w-full sm:w-auto mt-3 sm:mt-0 sm:mr-auto">
-                            <form action="{{ route('admin.petugas.destroy', $user->id) }}" method="POST" class="inline-block" id="deletePetugasFormModal{{ $user->id }}">
-                                @csrf
-                                @method('DELETE')
-                                <button type="button" onclick="confirmDelete({{ $user->id }})" class="inline-flex justify-center rounded-md border border-red-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-red-700 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:w-auto sm:text-sm">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 -ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                    Hapus Petugas
-                                </button>
-                            </form>
-                        </div>
                     </div>
                 </form>
             </div>
@@ -548,7 +543,7 @@
 
                 <!-- Footer konfirmasi -->
                 <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t">
-                    <form action="{{ route('admin.petugas.destroy', $user->id) }}" method="POST" id="confirmDeleteForm{{ $user->id }}">
+                    <form action="{{ route('admin.petugas.destroy', $user->id) }}" method="POST" id="deletePetugasForm{{ $user->id }}">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">
@@ -571,6 +566,72 @@
 </div>
 @endforeach
 
+<!-- Modal Konfirmasi Hapus Petugas -->
+<div id="confirmDeleteModal{{ $user->id }}" class="modal fixed inset-0 z-50 hidden overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity modal-backdrop" aria-hidden="true">
+            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+        </div>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full max-w-[95%] w-full">
+            <div class="bg-white">
+                <!-- Header dengan warna merah untuk indikasi bahaya -->
+                <div class="flex justify-between items-center p-4 bg-red-500 text-white">
+                    <h5 class="text-lg font-semibold flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        Konfirmasi Hapus
+                    </h5>
+                    <button type="button" onclick="closeModal('confirmDeleteModal{{ $user->id }}')" class="text-white hover:text-gray-200 p-2">
+                        <span class="sr-only">Tutup</span>
+                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Konten modal konfirmasi -->
+                <div class="p-6">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                            <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900">Hapus Petugas</h3>
+                            <div class="mt-2">
+                                <p class="text-sm text-gray-500">
+                                    Apakah Anda yakin ingin menghapus petugas <strong>{{ $user->name }}</strong>? Tindakan ini tidak dapat dibatalkan dan semua data terkait petugas ini akan dihapus secara permanen.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer konfirmasi -->
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t">
+                    <form action="{{ route('admin.petugas.destroy', $user->id) }}" method="POST" id="deletePetugasForm{{ $user->id }}">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 -ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Ya, Hapus Petugas
+                        </button>
+                    </form>
+                    <button type="button" onclick="closeModal('confirmDeleteModal{{ $user->id }}')" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:mt-0 sm:w-auto sm:text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 -ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Batal
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -779,8 +840,9 @@
 
     // Tambahkan fungsi baru untuk konfirmasi hapus yang lebih baik
     function confirmDelete(userId) {
-        closeModal('editPetugasModal' + userId);
-        openModal('confirmDeleteModal' + userId);
+        if (confirm('Apakah Anda yakin ingin menghapus petugas ini?')) {
+            document.getElementById('deletePetugasForm' + userId).submit();
+        }
     }
 
     // Menambahkan fungsi untuk menilai kekuatan password

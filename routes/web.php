@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\ManagementDataPetugasController;
 use App\Http\Controllers\Admin\ManagementDataParkirController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\ParkingAreaController;
 use App\Http\Controllers\Admin\ParkingSlotController;
 use App\Http\Controllers\Admin\OccupancyHistoryController;
@@ -44,5 +45,18 @@ Route::prefix('admin')->name('admin.')->group(function () {
             });
 
         Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+
+        // Profil routes
+        Route::get('/profile', [ProfileController::class, 'index'])->name('profile');
+        Route::put('/profile/update', [ProfileController::class, 'update'])->name('profile.update');
+
+        // Manajemen Data Parkir
+        Route::get('/parkir', [ManagementDataParkirController::class, 'index'])->name('parkir.index');
+        Route::get('/parkir/sync', [ManagementDataParkirController::class, 'syncFromFirebase'])->name('parkir.sync');
+        Route::get('/parkir/export', [ManagementDataParkirController::class, 'exportCsv'])->name('parkir.export');
+        Route::get('/parkir/test-connection', [ManagementDataParkirController::class, 'testConnection'])->name('parkir.test-connection');
+        
+        // Webhook untuk Firebase
+        Route::post('/webhook/firebase', [ManagementDataParkirController::class, 'handleFirebaseWebhook'])->name('webhook.firebase');
     });
 });

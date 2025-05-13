@@ -88,13 +88,13 @@
             <!-- User Profile dengan animasi dan interaksi yang lebih baik -->
             <div class="p-4 border-t bg-gray-50">
                 <div class="flex items-center space-x-3">
-                    <div class="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center shadow-sm">
+                    <a href="{{ route('admin.profile') }}" class="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center shadow-sm hover:bg-green-200 transition-colors">
                         <span class="text-sm font-medium text-green-800">{{ substr(Auth::user()->name, 0, 1) }}</span>
-                    </div>
+                    </a>
                     <div class="flex-1">
-                        <p class="text-sm font-medium text-gray-700">
+                        <a href="{{ route('admin.profile') }}" class="text-sm font-medium text-gray-700 hover:text-green-600 transition-colors">
                             {{ Auth::user()->name }}
-                        </p>
+                        </a>
                         <p class="text-xs text-gray-500">
                             {{ Auth::user()->is_admin ? 'Administrator' : 'Petugas' }}
                         </p>
