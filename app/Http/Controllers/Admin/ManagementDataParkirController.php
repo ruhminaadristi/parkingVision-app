@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Http;
 use App\Models\User;
 use App\Models\ParkingHistory;
 use Carbon\Carbon;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class ManagementDataParkirController extends Controller
 {
@@ -131,44 +133,54 @@ class ManagementDataParkirController extends Controller
         // Ambil semua data yang sesuai dengan filter
         $parkingHistories = $query->orderBy('entry_time', 'desc')->get();
         
-        // Buat nama file
-        $filename = 'history_parkir_' . date('Y-m-d') . '.csv';
+        // Buat spreadsheet baru
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
         
-        // Buat response untuk CSV
+        // Set header
         $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'No', 'Jenis Kendaraan', 'Slot Parkir', 'No. Slot', 'Tanggal',
+            'Jam Masuk', 'Jam Keluar', 'Durasi', 'Status'
         ];
         
-        // Buat callback untuk streaming CSV
-        $callback = function() use ($parkingHistories) {
-            $file = fopen('php://output', 'w');
-            
-            // Header CSV
-            fputcsv($file, [
-                'No', 'Jenis Kendaraan', 'Slot Parkir', 'No. Slot', 'Tanggal',
-                'Jam Masuk', 'Jam Keluar', 'Durasi', 'Status'
-            ]);
-            
-            // Data
-            foreach ($parkingHistories as $index => $history) {
-                fputcsv($file, [
-                    $index + 1,
-                    $history->vehicle_type,
-                    $history->slot_label,
-                    $history->slot_index,
-                    $history->entry_time->format('d F Y'),
-                    $history->entry_time->format('H:i'),
-                    $history->exit_time ? $history->exit_time->format('H:i') : '-',
-                    $history->getFormattedDuration(),
-                    $history->status
-                ]);
-            }
-            
-            fclose($file);
-        };
+        // Tulis header
+        foreach ($headers as $key => $header) {
+            $sheet->setCellValue(chr(65 + $key) . '1', $header);
+        }
         
-        return response()->stream($callback, 200, $headers);
+        // Tulis data
+        foreach ($parkingHistories as $index => $history) {
+            $row = $index + 2;
+            $sheet->setCellValue('A' . $row, $index + 1);
+            $sheet->setCellValue('B' . $row, $history->vehicle_type);
+            $sheet->setCellValue('C' . $row, $history->slot_label);
+            $sheet->setCellValue('D' . $row, $history->slot_index);
+            $sheet->setCellValue('E' . $row, $history->entry_time->format('d F Y'));
+            $sheet->setCellValue('F' . $row, $history->entry_time->format('H:i'));
+            $sheet->setCellValue('G' . $row, $history->exit_time ? $history->exit_time->format('H:i') : '-');
+            $sheet->setCellValue('H' . $row, $history->getFormattedDuration());
+            $sheet->setCellValue('I' . $row, $history->status);
+        }
+        
+        // Auto-size kolom
+        foreach (range('A', 'I') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+        
+        // Buat nama file
+        $filename = 'history_parkir_' . date('Y-m-d') . '.xlsx';
+        
+        // Buat writer
+        $writer = new Xlsx($spreadsheet);
+        
+        // Set header untuk download
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+        
+        // Output file
+        $writer->save('php://output');
+        exit;
     }
     
     /**
