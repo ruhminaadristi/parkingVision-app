@@ -15,8 +15,8 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 class ManagementDataParkirController extends Controller
 {
     // Konfigurasi slot parkir
-    protected $totalCarSpots = 7; // Slot 0-6 untuk mobil
-    protected $totalMotorSpots = 8; // Slot 7-14 untuk motor
+    protected $totalMotorSpots = 5; // Slot 0-6 untuk mobil
+    protected $totalCarSpots = 6; // Slot 7-14 untuk motor
     protected $firebaseUrl; // URL Firebase Realtime Database
     
     public function __construct()
@@ -54,11 +54,22 @@ class ManagementDataParkirController extends Controller
             });
         }
         
+        // Log total records untuk debugging
+        $totalRecords = ParkingHistory::count();
+        
         // Ambil data dan urutkan berdasarkan waktu masuk terbaru
+        // Meningkatkan jumlah data per halaman menjadi 10
         $parkingHistories = $query->orderBy('entry_time', 'desc')
                                  ->paginate(10);
         
-        return view('admin.manajemenDataParkir', compact('parkingHistories'));
+        // Pastikan data terambil dengan benar
+        if ($parkingHistories->isEmpty() && $totalRecords > 0 && !$request->has('page')) {
+            // Jika tidak ada data yang ditampilkan tapi ada data di database, coba refresh cache
+            $parkingHistories = $query->orderBy('entry_time', 'desc')
+                                     ->paginate(10, ['*'], 'page', 1);
+        }
+        
+        return view('admin.manajemenDataParkir', compact('parkingHistories', 'totalRecords'));
     }
     
     /**
@@ -93,21 +104,30 @@ class ManagementDataParkirController extends Controller
             // Ambil data dari Firebase dengan konfigurasi SSL yang sesuai
             $response = Http::withOptions([
                 'verify' => $sslVerify,
+                'timeout' => 30, // Meningkatkan timeout untuk memastikan data terambil lengkap
             ])->get("{$this->firebaseUrl}/parking_detection.json");
             
             if ($response->successful()) {
                 $parkingData = $response->json();
                 
+                // Log data yang diterima untuk debugging
+                logger('Firebase data received: ' . json_encode($parkingData));
+                
                 // Proses data yang diperoleh
-                $this->processSlotChanges($parkingData);
+                $result = $this->processSlotChanges($parkingData);
+                
+                // Clear cache untuk memastikan data terbaru ditampilkan
+                cache()->forget('parking_histories_page_1');
                 
                 return redirect()->route('admin.parkir.index')
-                                ->with('success', 'Data berhasil disinkronkan dari Firebase');
+                                ->with('success', 'Data berhasil disinkronkan dari Firebase. ' . $result);
             } else {
+                logger('Firebase sync failed: ' . $response->status());
                 return redirect()->route('admin.parkir.index')
                                 ->with('error', 'Gagal mengambil data dari Firebase: ' . $response->status());
             }
         } catch (\Exception $e) {
+            logger('Firebase sync exception: ' . $e->getMessage());
             return redirect()->route('admin.parkir.index')
                             ->with('error', 'Error: ' . $e->getMessage());
         }
@@ -185,58 +205,123 @@ class ManagementDataParkirController extends Controller
     
     /**
      * Proses perubahan status slot parkir
+     * @return string Informasi tentang hasil pemrosesan
      */
     protected function processSlotChanges($parkingData)
     {
+        // Inisialisasi counter untuk tracking perubahan
+        $created = 0;
+        $updated = 0;
+        $errors = 0;
+        
         // Ambil data status slot sebelumnya dari cache atau database
         $previousData = cache('previous_parking_data', []);
         $timestamp = isset($parkingData['timestamp']) 
             ? Carbon::parse($parkingData['timestamp'])
             : now();
         
-        // Loop melalui semua slot parkir
-        for ($i = 0; $i < ($this->totalCarSpots + $this->totalMotorSpots); $i++) {
-            $slotKey = "parking_spot_{$i}";
-            
-            // Pastikan data untuk slot ini ada
-            if (!isset($parkingData[$slotKey])) {
-                continue;
-            }
-            
-            $currentStatus = $parkingData[$slotKey];
-            $previousStatus = $previousData[$slotKey] ?? null;
-            
-            // Jika status sebelumnya tersedia dan berbeda dengan status saat ini
-            if ($previousStatus !== null && $previousStatus !== $currentStatus) {
-                // Jika slot sebelumnya kosong dan sekarang terisi, berarti ada kendaraan masuk
-                if ($previousStatus === 'empty' && $currentStatus === 'occupied') {
-                    ParkingHistory::create([
-                        'slot_index' => $i,
-                        'slot_label' => $this->getParkingSlotLabel($i),
-                        'vehicle_type' => $this->getVehicleType($i),
-                        'entry_time' => $timestamp,
-                        'status' => 'Parkir'
-                    ]);
-                } 
-                // Jika slot sebelumnya terisi dan sekarang kosong, berarti kendaraan keluar
-                else if ($previousStatus === 'occupied' && $currentStatus === 'empty') {
-                    $record = ParkingHistory::where('slot_index', $i)
-                                         ->where('status', 'Parkir')
-                                         ->whereNull('exit_time')
-                                         ->latest()
-                                         ->first();
-                    
-                    if ($record) {
-                        $record->exit_time = $timestamp;
-                        $record->status = 'Selesai';
-                        $record->save();
+        // Log untuk debugging
+        logger('Processing parking changes. Previous data: ' . json_encode($previousData));
+        logger('Total slots to process: ' . ($this->totalMotorSpots + $this->totalCarSpots));
+        
+        try {
+            // Jika tidak ada data sebelumnya, anggap semua slot kosong
+            if (empty($previousData)) {
+                logger('No previous data found, initializing all slots');
+                for ($i = 0; $i < ($this->totalMotorSpots + $this->totalCarSpots); $i++) {
+                    $slotKey = "parking_spot_{$i}";
+                    if (isset($parkingData[$slotKey]) && $parkingData[$slotKey] === 'occupied') {
+                        try {
+                            ParkingHistory::create([
+                                'slot_index' => $i,
+                                'slot_label' => $this->getParkingSlotLabel($i),
+                                'vehicle_type' => $this->getVehicleType($i),
+                                'entry_time' => $timestamp,
+                                'status' => 'Parkir'
+                            ]);
+                            $created++;
+                            logger("Created new parking record for slot {$i}");
+                        } catch (\Exception $e) {
+                            logger("Error creating parking record for slot {$i}: " . $e->getMessage());
+                            $errors++;
+                        }
                     }
                 }
             }
+            
+            // Loop melalui semua slot parkir
+            for ($i = 0; $i < ($this->totalMotorSpots + $this->totalCarSpots); $i++) {
+                $slotKey = "parking_spot_{$i}";
+                
+                // Pastikan data untuk slot ini ada
+                if (!isset($parkingData[$slotKey])) {
+                    logger("Slot {$i} data not found in Firebase data");
+                    continue;
+                }
+                
+                $currentStatus = $parkingData[$slotKey];
+                $previousStatus = $previousData[$slotKey] ?? null;
+                
+                logger("Processing slot {$i}: previous={$previousStatus}, current={$currentStatus}");
+                
+                // Jika status sebelumnya tersedia dan berbeda dengan status saat ini
+                if ($previousStatus !== null && $previousStatus !== $currentStatus) {
+                    // Jika slot sebelumnya kosong dan sekarang terisi, berarti ada kendaraan masuk
+                    if ($previousStatus === 'empty' && $currentStatus === 'occupied') {
+                        try {
+                            ParkingHistory::create([
+                                'slot_index' => $i,
+                                'slot_label' => $this->getParkingSlotLabel($i),
+                                'vehicle_type' => $this->getVehicleType($i),
+                                'entry_time' => $timestamp,
+                                'status' => 'Parkir'
+                            ]);
+                            $created++;
+                            logger("Created new parking entry for slot {$i}");
+                        } catch (\Exception $e) {
+                            logger("Error creating parking entry for slot {$i}: " . $e->getMessage());
+                            $errors++;
+                        }
+                    } 
+                    // Jika slot sebelumnya terisi dan sekarang kosong, berarti kendaraan keluar
+                    else if ($previousStatus === 'occupied' && $currentStatus === 'empty') {
+                        try {
+                            $record = ParkingHistory::where('slot_index', $i)
+                                                ->where('status', 'Parkir')
+                                                ->whereNull('exit_time')
+                                                ->latest()
+                                                ->first();
+                            
+                            if ($record) {
+                                $record->exit_time = $timestamp;
+                                $record->status = 'Selesai';
+                                $record->save();
+                                $updated++;
+                                logger("Updated parking exit for slot {$i}, record ID: {$record->id}");
+                            } else {
+                                logger("No active parking record found for slot {$i} to mark as exited");
+                            }
+                        } catch (\Exception $e) {
+                            logger("Error updating parking exit for slot {$i}: " . $e->getMessage());
+                            $errors++;
+                        }
+                    }
+                }
+            }
+            
+            // Simpan data saat ini untuk perbandingan berikutnya
+            cache(['previous_parking_data' => $parkingData], now()->addHours(24));
+            
+            // Bersihkan cache pagination untuk memastikan data terbaru ditampilkan
+            for ($i = 1; $i <= 5; $i++) {
+                cache()->forget("parking_histories_page_{$i}");
+            }
+            
+            return "Berhasil memproses data: {$created} baru, {$updated} diperbarui" . ($errors > 0 ? ", {$errors} error" : "");
+        } catch (\Exception $e) {
+            logger("Error in processSlotChanges: " . $e->getMessage());
+            return "Error memproses data: " . $e->getMessage();
         }
-        
-        // Simpan data saat ini untuk perbandingan berikutnya
-        cache(['previous_parking_data' => $parkingData], now()->addHours(24));
     }
     
     /**
@@ -244,10 +329,10 @@ class ManagementDataParkirController extends Controller
      */
     protected function getParkingSlotLabel($slotIndex)
     {
-        if ($slotIndex < $this->totalCarSpots) {
-            return "M" . ($slotIndex + 1); // Mobil: M1, M2, ...
+        if ($slotIndex < $this->totalMotorSpots) {
+            return "R" . ($slotIndex + 1); // Mobil: M1, M2, ...
         } else {
-            return "R" . ($slotIndex - $this->totalCarSpots + 1); // Motor: R1, R2, ...
+            return "M" . ($slotIndex - $this->totalMotorSpots + 1); // Motor: R1, R2, ...
         }
     }
     
@@ -256,10 +341,10 @@ class ManagementDataParkirController extends Controller
      */
     protected function getVehicleType($slotIndex)
     {
-        if ($slotIndex < $this->totalCarSpots) {
-            return "Mobil";
-        } else {
+        if ($slotIndex < $this->totalMotorSpots) {
             return "Motor";
+        } else {
+            return "Mobil";
         }
     }
 

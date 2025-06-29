@@ -101,7 +101,7 @@
             </div>
         </div>
         <div class="mt-8 pt-8 border-t border-gray-700 text-center text-sm text-gray-400">
-            © {{ date('Y') }} Parking Vision. Seluruh hak cipta dilindungi.
+            Â© {{ date('Y') }} Parking Vision. Seluruh hak cipta dilindungi.
         </div>
     </div>
 </footer>
@@ -137,17 +137,17 @@ function updateParkingDisplay(data) {
     }
 
     // Konfigurasi jumlah slot parkir
-    const totalCarSpots = 7; // Slot 0-6 untuk mobil 
-    const totalMotorSpots = 8; // Slot 7-14 untuk motor
+    const totalMotorSpots = 5;
+    const totalCarSpots = 6; 
+
+    // Hitung slot yang terisi untuk motor
+    const occupiedMotorSpots = Array.from({length: totalMotorSpots}, (_, i) => 
+        data[`parking_spot_${i + totalCarSpots}`] === 'occupied' ? 1 : 0
+    ).reduce((a, b) => a + b, 0);
 
     // Hitung slot yang terisi untuk mobil
     const occupiedCarSpots = Array.from({length: totalCarSpots}, (_, i) => 
         data[`parking_spot_${i}`] === 'occupied' ? 1 : 0
-    ).reduce((a, b) => a + b, 0);
-    
-    // Hitung slot yang terisi untuk motor
-    const occupiedMotorSpots = Array.from({length: totalMotorSpots}, (_, i) => 
-        data[`parking_spot_${i + totalCarSpots}`] === 'occupied' ? 1 : 0
     ).reduce((a, b) => a + b, 0);
 
     // Hitung ketersediaan
@@ -197,12 +197,12 @@ function updateParkingDisplay(data) {
                     </div>
                     <div class="mt-4 grid grid-cols-2 gap-2 text-center">
                         <div class="bg-gray-50 p-2 rounded">
-                            <p class="text-xs text-gray-500">Mobil</p>
-                            <p class="text-lg font-semibold">${data.Car || 0}</p>
-                        </div>
-                        <div class="bg-gray-50 p-2 rounded">
                             <p class="text-xs text-gray-500">Motor</p>
                             <p class="text-lg font-semibold">${data.Motorcycle || 0}</p>
+                        </div>
+                        <div class="bg-gray-50 p-2 rounded">
+                            <p class="text-xs text-gray-500">Mobil</p>
+                            <p class="text-lg font-semibold">${data.Car || 0}</p>
                         </div>
                     </div>
                 </div>
@@ -223,12 +223,12 @@ function updateParkingDisplay(data) {
                     </div>
                     <div class="mt-4 grid grid-cols-2 gap-2 text-center">
                         <div class="bg-gray-50 p-2 rounded">
-                            <p class="text-xs text-gray-500">Mobil</p>
-                            <p class="text-lg font-semibold">${data.Car_in_parking || 0}</p>
-                        </div>
-                        <div class="bg-gray-50 p-2 rounded">
                             <p class="text-xs text-gray-500">Motor</p>
                             <p class="text-lg font-semibold">${data.Motorcycle_in_parking || 0}</p>
+                        </div>
+                        <div class="bg-gray-50 p-2 rounded">
+                            <p class="text-xs text-gray-500">Mobil</p>
+                            <p class="text-lg font-semibold">${data.Car_in_parking || 0}</p>
                         </div>
                     </div>
                 </div>
@@ -285,7 +285,7 @@ function updateParkingDisplay(data) {
                         </h3>
                         <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-4">
                             ${Array.from({length: totalMotorSpots}, (_, i) => {
-                                const spotIndex = i + totalCarSpots;
+                                const spotIndex = i;
                                 const status = data[`parking_spot_${spotIndex}`] || 'empty';
                                 const isOccupied = status === 'occupied';
                                 const bgColor = isOccupied ? 'bg-red-500 shadow-red-200' : 'bg-green-500 shadow-green-200';
@@ -318,7 +318,8 @@ function updateParkingDisplay(data) {
                         </h3>
                         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-4">
                             ${Array.from({length: totalCarSpots}, (_, i) => {
-                                const status = data[`parking_spot_${i}`] || 'empty';
+                                const spotIndex = i + totalMotorSpots;
+                                const status = data[`parking_spot_${spotIndex}`] || 'empty';
                                 const isOccupied = status === 'occupied';
                                 const bgColor = isOccupied ? 'bg-red-500 shadow-red-200' : 'bg-green-500 shadow-green-200';
                                 const statusText = isOccupied ? 'Terisi' : 'Kosong';

@@ -26,7 +26,6 @@
         </div>
     </div>
 
-    <!-- Dashboard content -->
     <div class="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-100">
         <div class="mb-4">
             <h2 class="text-lg font-semibold text-gray-700 mb-4">Ringkasan Parkir</h2>
@@ -39,7 +38,7 @@
                         <div class="z-10">
                             <p class="text-gray-500 mb-1 text-sm font-medium">Mobil di Parkiran</p>
                             <div class="flex items-baseline">
-                                <h3 class="text-4xl font-bold text-emerald-600" id="carCount">7</h3>
+                                <h3 class="text-4xl font-bold text-emerald-600" id="carCount">0</h3>
                                 <span class="ml-2 text-xs py-0.5 px-1.5 rounded-full bg-emerald-100 text-emerald-700 font-medium" id="carAvailable">Tersedia</span>
                             </div>
                         </div>
@@ -59,7 +58,7 @@
                         <div class="z-10">
                             <p class="text-gray-500 mb-1 text-sm font-medium">Motor di Parkiran</p>
                             <div class="flex items-baseline">
-                                <h3 class="text-4xl font-bold text-blue-600" id="motorCount">9</h3>
+                                <h3 class="text-4xl font-bold text-blue-600" id="motorCount">0</h3>
                                 <span class="ml-2 text-xs py-0.5 px-1.5 rounded-full bg-blue-100 text-blue-700 font-medium" id="motorAvailable">Tersedia</span>
                             </div>
                         </div>
@@ -374,15 +373,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Pastikan nilai totalVehicles selalu muncul dengan benar di awal load
     const totalVehiclesElement = document.getElementById('totalVehicles');
-    const searchDate = '{{ $searchDate }}';
-    const isMay4th2025 = searchDate === '2025-05-04';
-    
-    // Jika tanggal 4 Mei 2025, paksa nilai menjadi 4
-    if (isMay4th2025) {
-        totalVehiclesElement.textContent = '4';
-        totalVehiclesElement.dataset.value = '4';
-        console.log('Inisialisasi awal: Set nilai kendaraan tanggal 4 Mei 2025 menjadi 4');
-    }
     
     // Tanggal & Waktu
     function updateDateTime() {
@@ -872,64 +862,43 @@ document.addEventListener('DOMContentLoaded', function() {
     // Referensi ke node parking_detection di Firebase
     const parkingRef = database.ref('parking_detection');
     
-    // Konfigurasi slot parkir
-    const totalCarSpots = 7; // Slot 0-6 untuk mobil 
-    const totalMotorSpots = 8; // Slot 7-14 untuk motor
-    
-    // Fungsi untuk memperbarui data kendaraan di dashboard
     function updateVehicleCounts(data) {
-        if (!data) return;
-        
-        // Hitung slot yang terisi untuk mobil
-        const occupiedCarSpots = Array.from({length: totalCarSpots}, (_, i) => 
-            data[`parking_spot_${i}`] === 'occupied' ? 1 : 0
-        ).reduce((a, b) => a + b, 0);
-        
-        // Hitung slot yang terisi untuk motor
-        const occupiedMotorSpots = Array.from({length: totalMotorSpots}, (_, i) => 
-            data[`parking_spot_${i + totalCarSpots}`] === 'occupied' ? 1 : 0
-        ).reduce((a, b) => a + b, 0);
-        
-        // Hitung ketersediaan
-        const availableCarSpots = totalCarSpots - occupiedCarSpots;
-        const availableMotorSpots = totalMotorSpots - occupiedMotorSpots;
-        
-        // Update tampilan dashboard
-        document.getElementById('carCount').textContent = occupiedCarSpots;
-        document.getElementById('carAvailable').textContent = `${availableCarSpots} Tersedia`;
-        
-        document.getElementById('motorCount').textContent = occupiedMotorSpots;
-        document.getElementById('motorAvailable').textContent = `${availableMotorSpots} Tersedia`;
-        
-        // PERBAIKAN: Hanya perbarui jika bukan tanggal tertentu yang sudah diset
-        const totalVehiclesElement = document.getElementById('totalVehicles');
-        const serverCurrentDate = '{{ $serverDate }}';
-        const searchDate = '{{ $searchDate }}';
-        
-        // Periksa apakah ini tanggal 4 Mei 2025 (kasus khusus)
-        const isMay4th2025 = searchDate === '2025-05-04';
-        
-        // Hanya perbarui total kendaraan dari Firebase jika bukan tanggal khusus
-        if (data.total_vehicles && !isMay4th2025) {
-            totalVehiclesElement.textContent = data.total_vehicles;
-        } else if (isMay4th2025) {
-            // Pertahankan nilai yang ditetapkan oleh controller untuk 4 Mei 2025
-            console.log('Mempertahankan nilai controller untuk 4 Mei 2025: ' + totalVehiclesElement.dataset.value);
-        }
-        
-        // Format timestamp yang lebih user-friendly
-        if (data.timestamp) {
-            const date = new Date(data.timestamp);
-            const formattedTime = date.toLocaleString('id-ID', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            document.getElementById('lastUpdateData').textContent = formattedTime;
-        }
+    // Keluar dari fungsi jika tidak ada data untuk menghindari error
+	if (!data) return;
+
+	 // Ambil data langsung dari Firebase sesuai dengan key pada gambar Anda.
+	 // Jika key tidak ditemukan, nilai defaultnya adalah 0.
+	 const carCount = data.Car_in_parking || 0;
+	 const motorCount = data.Motorcycle_in_parking || 0;
+	    
+	 // Update elemen HTML dengan nilai yang sudah diambil
+	 document.getElementById('carCount').textContent = carCount;
+	 document.getElementById('motorCount').textContent = motorCount;
+
+	 // Memperbarui timestamp terakhir kali data diubah di Firebase
+	 if (data.timestamp) {
+	   // Contoh timestamp dari gambar: "2025-06-12 08:47:29"
+	   // Kita ubah menjadi format yang lebih mudah dibaca
+	   const date = new Date(data.timestamp.replace(" ", "T")); // Ganti spasi dengan 'T' agar kompatibel
+	   const formattedTime = date.toLocaleString('id-ID', {
+	         day: 'numeric',
+	         month: 'long',
+	         year: 'numeric',
+	         hour: '2-digit',
+	         minute: '2-digit'
+	   });
+	   document.getElementById('lastUpdateData').textContent = formattedTime;
+	 }
+
     }
+    
+    parkingRef.on('value', (snapshot) => {
+        // 1. Ambil data dari Firebase ketika ada perubahan
+        const data = snapshot.val();
+        
+        // 2. Panggil fungsi updateVehicleCounts dan kirimkan data yang baru diterima
+        updateVehicleCounts(data);
+    });
 });
 </script>
 @endpush
